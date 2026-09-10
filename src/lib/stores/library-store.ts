@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Book } from '@/lib/types';
-import { clearBookAllData } from '@/lib/storage/idb-storage';
+import { clearBookAllData, BookContentStorage } from '@/lib/storage/idb-storage';
 import { useHighlightStore } from './highlight-store';
 import { useVocabStore } from './vocab-store';
 
@@ -14,6 +14,7 @@ interface LibraryState {
   updateBook: (id: string, updates: Partial<Book>) => void;
   setCurrentBook: (id: string | null) => void;
   getCurrentBook: () => Book | null;
+  getBookWithContent: (id: string) => Promise<Book | null>;
   refresh: () => void;
   updateBookTranslations: (id: string, translations: Record<number, string>, status: Book['translationStatus']) => void;
   setHasHydrated: (state: boolean) => void;
@@ -65,6 +66,25 @@ export const useLibraryStore = create<LibraryState>()(
       getCurrentBook: () => {
         const state = get();
         return state.books.find((b) => b.id === state.currentBookId) || null;
+      },
+
+      getBookWithContent: async (id: string): Promise<Book | null> => {
+        const state = get();
+        const bookMeta = state.books.find((b) => b.id === id);
+        if (!bookMeta) return null;
+
+        // If content already in memory, return as-is
+        if (bookMeta.content) return bookMeta;
+
+        // Load full content from IndexedDB
+        const contentData = await BookContentStorage.get(id);
+        if (!contentData) return bookMeta;
+
+        return {
+          ...bookMeta,
+          content: contentData.content,
+          chapters: contentData.chapters || bookMeta.chapters,
+        };
       },
 
       refresh: () => {
