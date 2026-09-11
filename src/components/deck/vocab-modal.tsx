@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { BookMarked, Trash2, Search, Download, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookMarked, Trash2, Search, Download, BookOpen, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,13 +17,14 @@ interface VocabDeckModalProps {
 
 export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps) {
   const { t } = useI18n();
-  const { vocabulary, removeVocab, exportToPrintableCSV, exportToReviewCSV, exportToAnki, exportToPrintableHTML } = useVocabStore();
+  const { vocabulary, grammarPoints, removeVocab, removeGrammar, exportToPrintableCSV, exportToReviewCSV, exportToAnki, exportToPrintableHTML } = useVocabStore();
   const libraryBooks = useLibraryStore((state) => state.books);
   const [searchQuery, setSearchQuery] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'books' | 'words'>(bookId ? 'words' : 'books');
   const [activeBookId, setActiveBookId] = useState<string | null>(bookId || null);
+  const [activeTab, setActiveTab] = useState<'vocab' | 'grammar'>('vocab');
 
   // Group vocabulary by book for the books list view
   const booksWithVocab = useMemo(() => {
@@ -55,9 +56,22 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
       v.translation.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Filter grammar points
+  const displayGrammar = useMemo(() => {
+    if (activeBookId) {
+      return grammarPoints.filter((g) => g.bookId === activeBookId);
+    }
+    return grammarPoints;
+  }, [grammarPoints, activeBookId]);
+
+  const filteredGrammar = displayGrammar.filter(
+    (g) =>
+      g.structure.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.explanation.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const downloadFile = useCallback((content: string, filename: string, type: string) => {
-    // Add UTF-8 BOM for Excel to correctly open CSV with Chinese characters
-    const bom = type.includes('csv') ? '﻿' : '';
+    const bom = type.includes('csv') ? '\ufeff' : '';
     const blob = new Blob([bom + content], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -94,6 +108,13 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
     [removeVocab]
   );
 
+  const handleDeleteGrammar = useCallback(
+    (id: string) => {
+      removeGrammar(id);
+    },
+    [removeGrammar]
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -103,6 +124,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
           setActiveBookId(null);
           setSelectedIds([]);
           setSearchQuery('');
+          setActiveTab('vocab');
         }
         onClose();
       }}
@@ -122,6 +144,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
               setActiveBookId(null);
               setSelectedIds([]);
               setSearchQuery('');
+              setActiveTab('vocab');
             }}
             className="flex items-center gap-1 text-sm text-[var(--accent-primary)] hover:underline"
           >
@@ -133,7 +156,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
 
       {/* Search and Export - only in words view */}
       {viewMode === 'words' && (
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-3">
           <div className="flex-1">
             <Input
               value={searchQuery}
@@ -147,12 +170,12 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
               variant="secondary"
               size="md"
               onClick={() => setShowExportMenu(!showExportMenu)}
-              disabled={filteredVocab.length === 0}
+              disabled={activeTab === 'grammar' ? filteredGrammar.length === 0 : filteredVocab.length === 0}
             >
               <Download className="h-4 w-4 mr-1" />
               {t('export')}
             </Button>
-            {showExportMenu && (
+            {showExportMenu && activeTab === 'vocab' && (
               <div className="absolute right-0 top-full mt-1 py-1 w-56 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg shadow-lg z-10 animate-fade-in">
                 <div className="px-3 py-1.5 text-xs text-[var(--text-muted)] border-b border-[var(--border-color)]">
                   导出 {selectedIds.length > 0 ? selectedIds.length : filteredVocab.length} 个单词
@@ -227,7 +250,34 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
         </div>
       )}
 
+      {/* Tab switcher - only in words view */}
       {viewMode === 'words' && (
+        <div className="flex gap-1 mb-3 p-1 rounded-lg bg-[var(--bg-tertiary)]">
+          <button
+            onClick={() => setActiveTab('vocab')}
+            className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'vocab'
+                ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+            }`}
+          >
+            词汇 ({filteredVocab.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('grammar')}
+            className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'grammar'
+                ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+            }`}
+          >
+            语法 ({filteredGrammar.length})
+          </button>
+        </div>
+      )}
+
+      {/* Select all checkbox - only for vocab tab */}
+      {viewMode === 'words' && activeTab === 'vocab' && (
         <div className="flex items-center gap-3 mb-3 px-1">
           <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
             <input
@@ -279,6 +329,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
                   setViewMode('words');
                   setSelectedIds([]);
                   setSearchQuery('');
+                  setActiveTab('vocab');
                 }}
                 className="w-full p-3 rounded-lg border border-[var(--border-color)] hover:border-[var(--accent-primary)] hover:bg-[var(--bg-secondary)] transition-all text-left flex items-center gap-3"
               >
@@ -302,8 +353,8 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
               </button>
             ))
           )
-        ) : (
-          /* === Words list view === */
+        ) : activeTab === 'vocab' ? (
+          /* === Vocabulary list view === */
           filteredVocab.length === 0 ? (
             <div className="text-center py-12">
               <BookMarked className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-4 opacity-50" />
@@ -379,16 +430,75 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
               </div>
             ))
           )
+        ) : (
+          /* === Grammar list view === */
+          filteredGrammar.length === 0 ? (
+            <div className="text-center py-12">
+              <Sparkles className="h-12 w-12 text-[var(--text-muted)] mx-auto mb-4 opacity-50" />
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                还没有添加任何语法要点
+              </p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                在阅读时选中文本使用 AI 分析语法即可添加
+              </p>
+            </div>
+          ) : (
+            filteredGrammar.map((point) => (
+              <div
+                key={point.id}
+                className="p-3 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] transition-colors group"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-[var(--accent-primary)]" />
+                      <span className="font-medium text-sm">{point.structure}</span>
+                    </div>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                      {point.explanation}
+                    </p>
+                    {point.examples && point.examples.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {point.examples.map((ex, j) => (
+                          <p key={j} className="text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                            • {ex}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                      来源段落: {point.paragraphRef.slice(0, 60)}{point.paragraphRef.length > 60 ? '...' : ''}
+                    </p>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteGrammar(point.id)}
+                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )
         )}
       </div>
 
       {/* Stats */}
-      {viewMode === 'words' && filteredVocab.length > 0 && (
+      {viewMode === 'words' && activeTab === 'vocab' && filteredVocab.length > 0 && (
         <div className="mt-4 pt-4 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)] flex items-center justify-between">
           <span>
             {t('total')}: {filteredVocab.length} {t('wordsSaved')}
             {activeBookId && ` · ${booksWithVocab.find(b => b.id === activeBookId)?.title}`}
           </span>
+        </div>
+      )}
+      {viewMode === 'words' && activeTab === 'grammar' && filteredGrammar.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-[var(--border-color)] text-xs text-[var(--text-muted)]">
+          共 {filteredGrammar.length} 个语法要点
+          {activeBookId && ` · ${booksWithVocab.find(b => b.id === activeBookId)?.title}`}
         </div>
       )}
       {viewMode === 'books' && booksWithVocab.length > 0 && (
