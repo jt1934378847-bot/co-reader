@@ -257,7 +257,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+      <div className="flex-1 max-h-[60vh] overflow-y-auto space-y-2 pr-2">
         {viewMode === 'books' ? (
           /* === Books list view === */
           booksWithVocab.length === 0 ? (
