@@ -105,7 +105,7 @@ export function Modal({
         )}
 
         {/* Body */}
-        <div className="p-4">{children}</div>
+        <div className="p-4 max-h-[85vh] overflow-y-auto flex flex-col">{children}</div>
       </div>
     </div>
   );
