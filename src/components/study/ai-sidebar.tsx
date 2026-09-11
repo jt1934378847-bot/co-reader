@@ -655,11 +655,19 @@ export function AIStudyPanel({
                 <Skeleton className="h-20 w-full" />
               ) : grammar.length > 0 ? (
                 grammar.map((item, i) => (
-                  <Card key={i} padding="sm">
-                    <div className="mb-2">
+                  <Card key={i} padding="sm" className="relative group">
+                    <div className="flex items-start justify-between">
                       <span className="font-medium text-sm">{item.structure}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onAddGrammar(item)}
+                        className="opacity-0 group-hover:opacity-100"
+                      >
+                        + {t('add')}
+                      </Button>
                     </div>
-                    <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                       {item.explanation}
                     </p>
                     {item.examples && item.examples.length > 0 && (

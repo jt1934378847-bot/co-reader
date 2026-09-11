@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useVocabStore } from '@/lib/stores/vocab-store';
 import { useLibraryStore } from '@/lib/stores/library-store';
 import { useI18n } from '@/lib/i18n';
+import type { VocabEntry, GrammarPoint } from '@/lib/types';
 
 interface VocabDeckModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
   const [searchQuery, setSearchQuery] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedGrammarIds, setSelectedGrammarIds] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'books' | 'words'>(bookId ? 'words' : 'books');
   const [activeBookId, setActiveBookId] = useState<string | null>(bookId || null);
   const [activeTab, setActiveTab] = useState<'vocab' | 'grammar'>('vocab');
@@ -81,19 +83,19 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
     URL.revokeObjectURL(url);
   }, []);
 
-  const handleExportPrintableCSV = useCallback((items: typeof vocabulary) => {
+  const handleExportPrintableCSV = useCallback((items: VocabEntry[] | GrammarPoint[]) => {
     downloadFile(exportToPrintableCSV(items), '默写表.csv', 'text/csv;charset=utf-8');
   }, [exportToPrintableCSV, downloadFile]);
 
-  const handleExportReviewCSV = useCallback((items: typeof vocabulary) => {
+  const handleExportReviewCSV = useCallback((items: VocabEntry[] | GrammarPoint[]) => {
     downloadFile(exportToReviewCSV(items), '对照表.csv', 'text/csv;charset=utf-8');
   }, [exportToReviewCSV, downloadFile]);
 
-  const handleExportAnki = useCallback((items: typeof vocabulary) => {
+  const handleExportAnki = useCallback((items: VocabEntry[] | GrammarPoint[]) => {
     downloadFile(exportToAnki(items), 'anki-import.txt', 'text/plain');
   }, [exportToAnki, downloadFile]);
 
-  const handleExportPrintableHTML = useCallback((items: typeof vocabulary) => {
+  const handleExportPrintableHTML = useCallback((items: VocabEntry[] | GrammarPoint[]) => {
     const html = exportToPrintableHTML(items);
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -123,6 +125,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
           setViewMode('books');
           setActiveBookId(null);
           setSelectedIds([]);
+          setSelectedGrammarIds([]);
           setSearchQuery('');
           setActiveTab('vocab');
         }
@@ -143,6 +146,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
               setViewMode('books');
               setActiveBookId(null);
               setSelectedIds([]);
+              setSelectedGrammarIds([]);
               setSearchQuery('');
               setActiveTab('vocab');
             }}
@@ -246,6 +250,77 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
                 </button>
               </div>
             )}
+            {showExportMenu && activeTab === 'grammar' && (
+              <div className="absolute right-0 top-full mt-1 py-1 w-56 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg shadow-lg z-10 animate-fade-in">
+                <div className="px-3 py-1.5 text-xs text-[var(--text-muted)] border-b border-[var(--border-color)]">
+                  导出 {selectedGrammarIds.length > 0 ? selectedGrammarIds.length : filteredGrammar.length} 个语法要点
+                </div>
+                <button
+                  onClick={() => {
+                    const items = selectedGrammarIds.length > 0
+                      ? filteredGrammar.filter((g) => selectedGrammarIds.includes(g.id))
+                      : filteredGrammar;
+                    handleExportPrintableCSV(items);
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2"
+                >
+                  <span>✏️</span>
+                  <div>
+                    <div className="font-medium">CSV 默写表</div>
+                    <div className="text-xs text-[var(--text-muted)]">解释 → 空白栏</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    const items = selectedGrammarIds.length > 0
+                      ? filteredGrammar.filter((g) => selectedGrammarIds.includes(g.id))
+                      : filteredGrammar;
+                    handleExportReviewCSV(items);
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2"
+                >
+                  <span>📋</span>
+                  <div>
+                    <div className="font-medium">CSV 对照表</div>
+                    <div className="text-xs text-[var(--text-muted)]">语法结构 → 解释</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    const items = selectedGrammarIds.length > 0
+                      ? filteredGrammar.filter((g) => selectedGrammarIds.includes(g.id))
+                      : filteredGrammar;
+                    handleExportPrintableHTML(items);
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2"
+                >
+                  <span>🖨️</span>
+                  <div>
+                    <div className="font-medium">打印 / PDF</div>
+                    <div className="text-xs text-[var(--text-muted)]">打开新标签页打印为PDF</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    const items = selectedGrammarIds.length > 0
+                      ? filteredGrammar.filter((g) => selectedGrammarIds.includes(g.id))
+                      : filteredGrammar;
+                    handleExportAnki(items);
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2"
+                >
+                  <span>🎴</span>
+                  <div>
+                    <div className="font-medium">Anki 导入</div>
+                    <div className="text-xs text-[var(--text-muted)]">制表符分隔格式</div>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -276,7 +351,7 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
         </div>
       )}
 
-      {/* Select all checkbox - only for vocab tab */}
+      {/* Select all checkbox - vocab tab */}
       {viewMode === 'words' && activeTab === 'vocab' && (
         <div className="flex items-center gap-3 mb-3 px-1">
           <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
@@ -299,6 +374,37 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
           {selectedIds.length > 0 && (
             <button
               onClick={() => setSelectedIds([])}
+              className="text-xs text-[var(--accent-primary)] hover:underline"
+            >
+              取消选择
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Select all checkbox - grammar tab */}
+      {viewMode === 'words' && activeTab === 'grammar' && (
+        <div className="flex items-center gap-3 mb-3 px-1">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={filteredGrammar.length > 0 && selectedGrammarIds.length === filteredGrammar.length}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedGrammarIds(filteredGrammar.map((g) => g.id));
+                } else {
+                  setSelectedGrammarIds([]);
+                }
+              }}
+              className="h-4 w-4 rounded border-[var(--border-color)] accent-[var(--accent-primary)]"
+            />
+            <span className="text-[var(--text-secondary)]">
+              {selectedGrammarIds.length > 0 ? `已选择 ${selectedGrammarIds.length}/${filteredGrammar.length}` : '全选'}
+            </span>
+          </label>
+          {selectedGrammarIds.length > 0 && (
+            <button
+              onClick={() => setSelectedGrammarIds([])}
               className="text-xs text-[var(--accent-primary)] hover:underline"
             >
               取消选择
@@ -446,9 +552,34 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
             filteredGrammar.map((point) => (
               <div
                 key={point.id}
-                className="p-3 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] transition-colors group"
+                className={`p-3 rounded-lg border transition-colors group cursor-pointer ${
+                  selectedGrammarIds.includes(point.id)
+                    ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/5'
+                    : 'border-[var(--border-color)] hover:bg-[var(--bg-secondary)]'
+                }`}
+                onClick={() => {
+                  setSelectedGrammarIds((prev) =>
+                    prev.includes(point.id)
+                      ? prev.filter((id) => id !== point.id)
+                      : [...prev, point.id]
+                  );
+                }}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedGrammarIds.includes(point.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setSelectedGrammarIds((prev) =>
+                        e.target.checked
+                          ? [...prev, point.id]
+                          : prev.filter((id) => id !== point.id)
+                      );
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 h-4 w-4 rounded border-[var(--border-color)] accent-[var(--accent-primary)] flex-shrink-0"
+                  />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-[var(--accent-primary)]" />
@@ -474,7 +605,10 @@ export function VocabDeckModal({ isOpen, onClose, bookId }: VocabDeckModalProps)
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDeleteGrammar(point.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteGrammar(point.id);
+                    }}
                     className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
