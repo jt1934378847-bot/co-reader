@@ -76,7 +76,8 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         className={`
-          relative w-full ${sizeStyles[size]}
+          relative w-full ${sizeStyles[size]} flex flex-col
+          max-h-[90vh]
           bg-[var(--bg-primary)] rounded-xl shadow-2xl
           border border-[var(--border-color)]
           animate-slide-up
@@ -105,7 +106,7 @@ export function Modal({
         )}
 
         {/* Body */}
-        <div className="p-4 max-h-[85vh] overflow-y-auto flex flex-col">{children}</div>
+        <div className="p-4 flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
   );
